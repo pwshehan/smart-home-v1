@@ -26,68 +26,45 @@ app.get("/warm", (req, res) => {
   res.send("Calentando para la pelea");
 });
 
-// app.post("/fights", async (request, response) => {
-//   try {
-//     const { winner, loser, title } = request.body;
-//     const data = {
-//       winner,
-//       loser,
-//       title,
-//     };
-//     const fightRef = await db.collection("fights").add({ ...data });
-//     const fight = await fightRef.get();
-
-//     response.json({
-//       id: fightRef.id,
-//       data: fight.data(),
-//     });
-//   } catch (error) {
-//     response.status(500).send(error);
-//   }
-// });
-
 app.put("/lights/:id", async (request, response) => {
   try {
     const lightId = request.params.id;
+    const state = request.body.state;
     const execer = request.body.execer;
 
     if (!lightId) throw new Error("id is blank");
-
+    if (!state) throw new Error("State is blank");
     if (!execer) throw new Error("Title is required");
 
-    // const data = {
-    //   title,
-    // };
-    // await db.collection("lights").doc(lightId).set(data, { merge: true });
-    const cityRef = db.collection("lights").doc(lightId);
-    const doc = await cityRef.get();
-    if (!doc.exists) {
-      console.log("No such document!");
+    const prv_doc = await db.collection("lights").doc(lightId).get();
+
+    if (!prv_doc.exists) {
       throw new Error("id not found");
     } else {
-      console.log("Document data:", doc.data());
+      const data = { state };
+      await db.collection("lights").doc(lightId).set(data, { merge: true });
+      const new_doc = await db.collection("lights").doc(lightId).get();
+
+      const prv_data = prv_doc.data();
+      const new_data = new_doc.data();
+      const event_log = {
+        execer: execer,
+        object: lightId,
+        prv_data: prv_data,
+        new_data: new_data,
+        timestamp: Date.now,
+      };
+
+      await db.collection("event_logs").add(event_log);
+
       response.json({
         id: lightId,
-        data: doc.data,
+        prv_doc: prv_doc.data(),
+        new_doc: new_doc.data(),
+        event_log: event_log,
       });
     }
   } catch (error) {
     response.status(500).send(error);
   }
 });
-
-// app.delete("/fights/:id", async (request, response) => {
-//   try {
-//     const fightId = request.params.id;
-
-//     if (!fightId) throw new Error("id is blank");
-
-//     await db.collection("fights").doc(fightId).delete();
-
-//     response.json({
-//       id: fightId,
-//     });
-//   } catch (error) {
-//     response.status(500).send(error);
-//   }
-// });
